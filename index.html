@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>5S Patrol</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 10px;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    .card {
+      background: #ffffff;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 6px;
+    }
+    input, select, textarea, button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 4px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    button {
+      background: #0078d4;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+    button.secondary {
+      background: #6c757d;
+    }
+    .finding {
+      border-left: 5px solid #0078d4;
+      padding-left: 10px;
+      margin-bottom: 10px;
+    }
+    .small {
+      font-size: 14px;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+<h2>5S Patrol</h2>
+
+<div class="card">
+  <label>Group</label>
+  <select id="group">
+    <option value="">-- Select Group --</option>
+    <option>Group 1</option>
+    <option>Group 2</option>
+    <option>Group 3</option>
+    <option>Group 4</option>
+    <option>Group 5</option>
+    <option>Group 6</option>
+    <option>Group 7</option>
+  </select>
+</div>
+
+<div class="card">
+  <h3>Add Finding</h3>
+
+  <label>Area</label>
+  <input type="text" id="area" />
+
+  <label>Finding Type</label>
+  <select id="type">
+    <option value="">-- Select --</option>
+    <option>Sharp edge</option>
+    <option>Heavy object</option>
+    <option>Trip hazard</option>
+    <option>Electrical hazard</option>
+    <option>Poor housekeeping</option>
+    <option>Blocked access</option>
+    <option>Unlabeled items</option>
+    <option>Unsafe storage</option>
+    <option>Fire hazard</option>
+    <option>Others</option>
+  </select>
+
+  <label>Issue Description</label>
+  <textarea id="issue" rows="3"></textarea>
+
+  <label>Photo (Camera or Album)</label>
+  <input type="file" id="photo" accept="image/*" />
+
+  <button onclick="addFinding()">Add</button>
+</div>
+
+<div class="card">
+  <h3>Findings (<span id="count">0</span>)</h3>
+  <div id="list"></div>
+</div>
+
+<div class="card">
+  <button onclick="submitAll()">Submit All Findings</button>
+</div>
+
+<script>
+  const findings = [];
+
+  function addFinding() {
+    const group = document.getElementById("group").value;
+    const area = document.getElementById("area").value;
+    const type = document.getElementById("type").value;
+    const issue = document.getElementById("issue").value;
+    const photoInput = document.getElementById("photo");
+    const photo = photoInput.files[0];
+
+    if (!group || !area || !type || !issue || !photo) {
+      alert("Please complete all fields.");
+      return;
+    }
+
+    findings.push({ group, area, type, issue, photo });
+    renderList();
+
+    document.getElementById("area").value = "";
+    document.getElementById("type").value = "";
+    document.getElementById("issue").value = "";
+    photoInput.value = "";
+  }
+
+  function renderList() {
+    const list = document.getElementById("list");
+    list.innerHTML = "";
+
+    findings.forEach((f, i) => {
+      const div = document.createElement("div");
+      div.className = "finding";
+      div.innerHTML = `
+        <strong>${f.area}</strong><br>
+        <span class="small">${f.type}</span><br>
+        <span class="small">${f.issue}</span><br>
+        <span class="small">📷 ${f.photo.name}</span><br>
+        <button class="secondary" onclick="removeFinding(${i})">Remove</button>
+      `;
+      list.appendChild(div);
+    });
+
+    document.getElementById("count").innerText = findings.length;
+  }
+
+  function removeFinding(index) {
+    findings.splice(index, 1);
+    renderList();
+  }
+
+  async function submitAll() {
+    if (findings.length === 0) {
+      alert("No findings to submit.");
+      return;
+    }
+
+    const payload = {
+      group: findings[0].group,
+      findings: []
+    };
+
+    for (const f of findings) {
+      const base64 = await toBase64(f.photo);
+      payload.findings.push({
+        area: f.area,
+        type: f.type,
+        issue: f.issue,
+        photoName: f.photo.name,
+        photoBase64: base64.split(",")[1]
+      });
+    }
+
+    fetch("PASTE_YOUR_HTTP_POST_URL_HERE", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(() => {
+      alert("✅ Patrol submitted successfully");
+      findings.length = 0;
+      renderList();
+    })
+    .catch(() => {
+      alert("❌ Submission failed");
+    });
+  }
+
+  function toBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+</script>
+
+</body>
+</html>
